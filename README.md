@@ -1,88 +1,116 @@
-# Vercel-Edge-Proxy
+# Vercel-Route-Proxy
 
+把目标 URL 编进路径里，交给 Vercel 的路由规则转发。
 
-## 项目介绍
+这个项目没有后端函数、没有 Node.js 运行时，也没有额外依赖。仓库里真正承担转发逻辑的只有 [`vercel.json`](./vercel.json)，[`index.html`](./index.html) 只是一个方便手动生成代理地址的静态页面。
 
-`Vercel-Edge-Proxy` 是一款免费的全能代理工具，基于 Vercel 平台构建，支持代理全网的 HTTP 和 HTTPS 接口，包括 OpenAI、Midjourney、GitHub、Google、Telegram 等。它可以稳定地在网络环境不佳的情况下运行，适用于单页面应用、API 接口等代理需求。
+## 这个项目适合拿来做什么
 
-无论是 OpenAI 等接口服务，还是 GitHub、Google 的资源，都可以通过该代理在国内无科学上网需求的情况下顺利访问，且稳定的 IP 可以确保长期使用不受影响。
+- 给接口、页面、静态资源做一个临时转发入口
+- 在不写服务端代码的前提下验证 Vercel 路由转发能力
+- 自建一个轻量的“URL -> 代理地址”转换工具页
+- 作为个人使用或小范围内部使用的代理壳
 
-**Vercel** 每月提供 100GB 的免费流量，足以满足大多数用户的使用需求。
+## 不适合什么场景
 
-## 特点
+- 面向公网开放、无人值守的通用代理服务
+- 需要鉴权、限流、审计、缓存策略的正式网关
+- 对稳定性、可观测性、容灾有明确 SLA 的生产入口
+- 需要对请求头、Cookie、响应内容做深度改写的场景
 
-- 支持 OpenAI、Midjourney、GitHub、Google、Telegram 等常见服务的代理。
-- 支持 HTTP 和 HTTPS 接口，单页面应用也可以使用。
-- 可在网络环境不佳的情况下使用，且代理 IP 稳定。
-- 完全免费（非商业用途）。
+## 核心机制
 
-## 请您 Star / Please Star
+Vercel 读取如下规则后，会把请求路径中的协议、主机和剩余路径重新拼成目标地址：
 
-如果您觉得此工具不错，请轻轻点击右上角的 **Star** 按钮以增加项目曝光度，谢谢！软件完全免费（商用除外），我们只希望大家能够为项目提供支持并分享给有需要的人，谢谢！
+```json
+{
+  "routes": [
+    {
+      "src": "/(?<protocol>[a-z][a-z0-9+.-]*)/(?<host>[^/]+)(?:/(?<path>.*))?",
+      "dest": "$protocol://$host/$path"
+    }
+  ]
+}
+```
+
+也就是把：
+
+```text
+/https/api.github.com/repos/vercel/vercel
+```
+
+转成：
+
+```text
+https://api.github.com/repos/vercel/vercel
+```
+
+## 地址格式
+
+代理地址格式：
+
+```text
+https://你的域名/<协议>/<主机>/<路径>?<query>
+```
+
+示例：
+
+| 目标地址 | 代理地址 |
+| --- | --- |
+| `https://example.com` | `/https/example.com` |
+| `https://example.com/docs/getting-started` | `/https/example.com/docs/getting-started` |
+| `https://example.com:8443/api/users?id=1` | `/https/example.com:8443/api/users?id=1` |
+| `http://httpbin.org/get?from=vercel` | `/http/httpbin.org/get?from=vercel` |
+
+## 首页怎么用
+
+部署完成后直接访问站点根路径：
+
+1. 输入完整目标 URL，也可以只输入域名，页面会默认补成 `https://`。
+2. 点击“立即代理”。
+3. 页面会在新标签页打开生成后的代理地址。
+
+如果目标 URL 里带查询参数，页面会一并保留。
 
 ## 部署
 
-点击以下按钮一键部署：
+### 方式一：导入到 Vercel
 
-[![Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/elykia-cn/Vercel-Edge-Proxy)
+1. Fork 这个仓库。
+2. 在 Vercel 中导入该仓库。
+3. 保持默认配置完成部署。
+4. 访问分配到的域名。
 
-你也可以通过 Fork 本项目后，在 [Vercel](https://vercel.com/) 网站上创建一个新项目。
+### 方式二：本地改完后推送
 
-## 使用方法
+这个项目是纯静态文件 + `vercel.json` 配置，只要仓库连接到 Vercel，推送后就会自动重新部署。
 
-1. **部署**：  
-   部署方式有两种：  
-   - 一键部署：点击上面的部署按钮。  
-   - Fork 本项目，登录 Vercel 后创建新项目进行部署。
+## 本地文件说明
 
-2. **绑定域名**（可选）：  
-   你可以使用 Vercel 提供的免费子域名，或者绑定你自己的域名。  
-   绑定域名时，按照 Vercel 上的教程配置即可。你可以通过申请 [tk免费域名](http://www.dot.tk/) 或者从其他域名注册商处获得免费域名。
-
-3. **访问**：  
-   部署完成后，使用以下格式访问接口：  
-   `https://你的域名/https/url` 或者 `http://你的域名/http/url`  
-   其中，`/https/url` 会映射到 HTTPS 接口，`/http/url` 会映射到 HTTP 接口。
-
-## 示例
-
-### 示例 1
-
-访问 `https://你的域名/https/api.openai.com/v1/chat/completions`  
-实际上会代理到 `https://api.openai.com/v1/chat/completions`
-
-在一些开源项目中使用时，通常会有类似的配置：  
-```python
-api_base = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+```text
+.
+├── index.html    # 静态输入页，用来生成代理地址
+├── vercel.json   # 路由转发规则
+├── README.md
+└── LICENSE
 ```
-你只需要将其改为：  
-```python
-openai.api_base = "https://你的域名/https/api.openai.com/v1"
-```
-这样就能通过你的代理访问 OpenAI 接口了。
 
-### 示例 2
+## 使用边界与注意事项
 
-访问 `https://你的域名/https/github.com/elykia-cn/Vercel-Edge-Proxy`  
-实际会被代理到 `https://github.com/elykia-cn/Vercel-Edge-Proxy`
+- 公开部署有被滥用的风险，至少应配合访问控制或只在私有环境使用。
+- 目标站点是否允许被转发，取决于目标站点自身策略以及 Vercel 的网络行为。
+- 这个项目的能力上限就是 Vercel 路由规则本身，不包含自定义业务逻辑。
+- 页面里的 `#fragment` 属于浏览器侧片段标识，不参与服务端请求，但会保留在最终打开的 URL 中。
 
-### 示例 3
+## 二次修改方向
 
-访问 `https://你的域名/https/www.google.com/search?q=vercel-api-proxy`  
-实际会代理到 `https://www.google.com/search?q=vercel-api-proxy`
+如果你准备继续扩展，这个仓库比较自然的演进方向有：
 
-## 加速 GitHub 下载
+- 增加访问密码或白名单，限制滥用
+- 为常用目标生成预设快捷入口
+- 给首页增加复制链接、历史记录、最近访问
+- 按自己的域名策略补充更多路由规则
 
-如果你需要加速 GitHub 的资源下载，可以使用以下方式：  
-原始链接：`https://objects.githubusercontent.com/github-production-release-asset-2e65be/xxxxxx`  
-加速后的链接：`https://你的域名/https/objects.githubusercontent.com/github-production-release-asset-2e65be/xxxxxx`
+## 许可证
 
-这将显著提升下载速度，尤其在带宽较小的情况下，下载速度可提升数倍。
-
-## 贡献
-
-欢迎提交 Issues 和 Pull Requests！如果你有任何建议或问题，欢迎提出，我们将尽力改进。
-
----
-
-感谢你使用 `Vercel-Edge-Proxy`！希望这个工具能够为你带来便利。
+[AGPL-3.0](./LICENSE)

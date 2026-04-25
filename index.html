@@ -2,305 +2,233 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vercel Edge Proxy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vercel-Route-Proxy</title>
+    <meta name="description" content="基于 Vercel routes 的轻量路由代理工具">
+    <meta name="theme-color" content="#F5F5F7">
+    
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D1D1F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'%3E%3C/path%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'%3E%3C/path%3E%3C/svg%3E">
 
-    <!-- 添加 favicon 图标 -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%230D6EFD' d='M27 22c-.7 0-1.4.3-1.9.7l-5.2-3.1c0-.2.1-.4.1-.6s0-.4-.1-.6l5.2-3.1c.5.4 1.2.7 1.9.7c1.7 0 3-1.3 3-3s-1.3-3-3-3s-3 1.3-3 3c0 .2 0 .4.1.6l-5.2 3.1c-.5-.4-1.2-.7-1.9-.7c-1.7 0-3 1.3-3 3s1.3 3 3 3c.7 0 1.4-.3 1.9-.7l5.2 3.1c0 .2-.1.4-.1.6c0 1.7 1.3 3 3 3s3-1.3 3-3s-1.3-3-3-3m0-10c.6 0 1 .4 1 1s-.4 1-1 1s-1-.4-1-1s.4-1 1-1m-10 8c-.6 0-1-.4-1-1s.4-1 1-1s1 .4 1 1s-.4 1-1 1m10 6c-.6 0-1-.4-1-1s.4-1 1-1s1 .4 1 1s-.4 1-1 1'%3E%3C/path%3E%3Cpath fill='%230D6EFD' d='M19 25H8.5c-3 0-5.5-2.5-5.5-5.5c0-2.7 1.9-4.9 4.5-5.4l1.3-.2l.3-1.3C9.9 8.7 13.2 6 17 6c.5 0 1 0 1.5.1c1.6.3 3 1.1 4.2 2.2l1.4-1.4c-1.4-1.4-3.2-2.4-5.2-2.7c-.6-.1-1.3-.2-1.9-.2c-4.7 0-8.9 3.3-9.8 8.1c-3.6.7-6.2 3.8-6.2 7.4C1 23.6 4.3 27 8.5 27H19z'%3E%3C/path%3E%3C/svg%3E">
-
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
+                    },
+                    colors: {
+                        apple: {
+                            gray: '#F5F5F7',
+                            text: '#1D1D1F',
+                            subtext: '#86868B',
+                            blue: '#0071E3',
+                            blueHover: '#0077ED',
+                        }
+                    },
+                    transitionTimingFunction: {
+                        'apple': 'cubic-bezier(0.16, 1, 0.3, 1)',
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        :root {
-            --primary: #0070f3;
-            --success: #18c964;
-            --error: #f31260;
-            --text-primary: #11181c;
-            --background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --radius: 12px;
-            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-        }
-
         body {
-            min-height: 100vh;
-            background: var(--background);
-            color: var(--text-primary);
-            line-height: 1.6;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background-color: #F5F5F7;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Remove default input styling */
+        input[type="url"]::-webkit-search-decoration,
+        input[type="url"]::-webkit-search-cancel-button,
+        input[type="url"]::-webkit-search-results-button,
+        input[type="url"]::-webkit-search-results-decoration {
+            display: none;
         }
 
-        .container {
-            width: 100%;
-            max-width: 720px;
-            margin-top: 4rem;
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(45deg, var(--primary), #0061d1);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 1rem;
-        }
-
-        .description {
-            color: #687076;
-            font-size: 1.1rem;
-            max-width: 480px;
-            margin: 0 auto;
-        }
-
-        .input-group {
-            position: relative;
-            width: 100%;
-            background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            transition: var(--transition);
-        }
-
-        .input-group:focus-within {
-            box-shadow: 0 8px 24px -2px rgba(var(--primary), 0.16);
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 1.25rem 1.5rem;
-            border: 2px solid #ecedee;
-            border-radius: var(--radius);
-            font-size: 1.1rem;
-            transition: var(--transition);
-        }
-
-        .input-field:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .submit-btn {
-            position: absolute;
-            right: 6px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: calc(var(--radius) - 4px);
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .submit-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-50%) scale(0.98);
-        }
-
-        .footer {
-            margin-top: auto;
-            padding: 2rem;
-            display: flex;
-            gap: 1.5rem;
-        }
-
-        .footer-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #687076;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .footer-link:hover {
-            color: var(--primary);
-        }
-
-        .status-indicator {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: var(--radius);
-            background: var(--success);
-            color: white;
-            box-shadow: var(--shadow);
-            opacity: 0;
-            transform: translateY(100%);
-            transition: var(--transition);
-        }
-
-        .status-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 640px) {
-            body {
-                padding: 1rem;
-            }
-            
-            .container {
-                margin-top: 2rem;
-            }
-            
-            .title {
-                font-size: 2rem;
-            }
-            
-            .submit-btn {
-                position: static;
-                width: 100%;
-                margin-top: 1rem;
-                transform: none;
-            }
+        /* Smooth auto-fill for webkit */
+        input:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+            -webkit-text-fill-color: #1D1D1F !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
     </style>
 </head>
+<body class="min-h-screen flex flex-col font-sans text-apple-text selection:bg-apple-blue/20 selection:text-apple-text">
 
-<body>
-    <div class="container">
-        <header>
-            <h1 class="title">Vercel Edge Proxy</h1>
-            <p class="description">输入目标URL地址，通过Vercel边缘网络进行安全代理访问</p>
-        </header>
-
-        <div class="input-group">
-            <input 
-                type="url" 
-                class="input-field"
-                id="input" 
-                placeholder="https://example.com"
-                spellcheck="false"
-                autocomplete="off"
-                enterkeyhint="go"
-            >
-            <button class="submit-btn" id="submitBtn">
-                立即代理
-                <span aria-hidden="true">→</span>
-            </button>
-        </div>
+    <!-- Soft Environment Blur Background -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <!-- Ultra-soft, highly transparent blobs for that premium Apple feel -->
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#0071E3]/[0.04] rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#5E5CE6]/[0.04] rounded-full blur-[100px]"></div>
+        <div class="absolute top-[20%] left-[40%] w-[40%] h-[40%] bg-slate-300/[0.08] rounded-full blur-[120px]"></div>
     </div>
 
-
-    <div class="footer">
-        <a href="https://vercel.com" class="footer-link" target="_blank">
-            <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-                <g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)" fill="#000000" stroke="none">
-                    <path d="M2310 5109 c-502 -55 -974 -249 -1355 -556 -129 -104 -340 -321 -433 -445 -265 -354 -434 -758 -498 -1193 -22 -147 -29 -428 -15 -575 42 -433 180 -833 405 -1174 414 -629 1047 -1032 1791 -1142 147 -22 428 -29 575 -15 433 42 833 180 1174 405 629 414 1032 1047 1142 1791 22 147 29 428 15 575 -51 524 -238 988 -558 1385 -104 129 -321 340 -445 433 -354 265 -755 432 -1193 498 -121 18 -487 26 -605 13z m909 -2348 c347 -607 631 -1105 631 -1107 0 -2 -569 -4 -1265 -4 -696 0 -1265 2 -1265 5 0 8 1263 2216 1266 2212 1 -1 287 -499 633 -1106z"/>
-                </g>
-            </svg>
-            Vercel
-        </a>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-3xl mx-auto z-10 relative">
         
-        <a href="https://github.com/elykia-cn/Vercel-Edge-Proxy" class="footer-link" target="_blank">
-            <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" fill="#000"/>
-            </svg>
-            GitHub
-        </a>
+        <!-- Typography Header -->
+        <div class="text-center mb-12 mt-[-5vh]">
+            <h1 class="text-[40px] sm:text-[48px] font-bold tracking-[-0.03em] text-apple-text mb-4 leading-tight">Vercel-Route-Proxy</h1>
+            <p class="text-[17px] sm:text-[19px] text-apple-subtext max-w-lg mx-auto leading-[1.47059] tracking-[-0.022em]">
+                基于 Vercel routes 的轻量代理。通过协议、主机与路径的简单映射，实现直接的 URL 转发。
+            </p>
+        </div>
+
+        <!-- Interactive Core -->
+        <div class="w-full max-w-2xl">
+            <!-- Glass Input Container -->
+            <div class="group relative bg-white/70 backdrop-blur-3xl rounded-[24px] p-2 sm:p-2.5 flex flex-col sm:flex-row items-center gap-2 transition-all duration-500 ease-apple ring-1 ring-black/[0.03] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_12px_rgba(0,0,0,0.02),0_8px_32px_rgba(0,0,0,0.02)] focus-within:bg-white/90 focus-within:ring-black/[0.05] focus-within:shadow-[inset_0_1px_1px_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.04),0_12px_48px_rgba(0,0,0,0.04)]">
+                
+                <div class="flex-1 w-full relative flex items-center px-4">
+                    <svg class="w-[18px] h-[18px] text-apple-subtext/50 mr-3 flex-shrink-0 transition-colors duration-300 group-focus-within:text-apple-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                    
+                    <input type="url" id="targetInput" class="w-full h-[50px] sm:h-[48px] bg-transparent border-none outline-none text-apple-text placeholder-apple-subtext/60 text-[16px] sm:text-[17px] font-medium transition-all" placeholder="输入目标 URL，例如 https://api.example.com" autocomplete="off" spellcheck="false" autofocus>
+                    
+                    <button id="clearBtn" class="absolute right-2 p-1.5 text-apple-subtext hover:text-apple-text opacity-0 scale-90 pointer-events-none transition-all duration-300 ease-apple bg-black/5 hover:bg-black/10 rounded-full" title="清空" aria-label="清空输入框">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <button id="proxyBtn" disabled class="w-full sm:w-auto h-[50px] sm:h-[48px] px-8 bg-apple-blue text-white rounded-[18px] text-[15px] font-semibold tracking-wide transition-all duration-400 ease-apple disabled:opacity-40 disabled:bg-apple-subtext/20 disabled:text-apple-text/40 disabled:cursor-not-allowed hover:bg-apple-blueHover hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 flex-shrink-0">
+                    <span id="btnText">立即代理</span>
+                    <svg id="btnSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Format Example -->
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-[13px] text-apple-subtext select-none">
+                <div class="bg-white/50 backdrop-blur-md border border-black/[0.04] px-3.5 py-1.5 rounded-[10px] font-mono shadow-[0_1px_2px_rgba(0,0,0,0.01)] text-apple-text/80 tracking-tight">https://api.example.com</div>
+                <svg class="w-4 h-4 text-apple-subtext/30 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                <svg class="w-4 h-4 text-apple-subtext/30 block sm:hidden rotate-90 my-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                <div class="bg-apple-blue/5 backdrop-blur-md border border-apple-blue/10 px-3.5 py-1.5 rounded-[10px] font-mono shadow-[0_1px_2px_rgba(0,0,0,0.01)] text-apple-blue tracking-tight">/https/api.example.com</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Links -->
+    <footer class="w-full pb-8 flex justify-center gap-8 text-[13px] text-apple-subtext font-medium z-10 relative">
+        <a href="https://github.com/elykia093/Vercel-Route-Proxy" target="_blank" rel="noopener" class="hover:text-apple-text transition-colors duration-300 ease-apple">GitHub</a>
+        <a href="https://vercel.com" target="_blank" rel="noopener" class="hover:text-apple-text transition-colors duration-300 ease-apple">Vercel</a>
+    </footer>
+
+    <!-- Glass Toast Notification -->
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-white/85 backdrop-blur-2xl border border-black/[0.04] px-4 py-3 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,1)] opacity-0 pointer-events-none z-50 transition-all duration-500 ease-apple transform -translate-y-4 scale-95">
+        <div id="toastIcon" class="flex-shrink-0"></div>
+        <span id="toastMsg" class="text-[14px] font-medium text-apple-text pr-1"></span>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('targetInput');
+            const btn = document.getElementById('proxyBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
 
-    <div id="status" class="status-indicator" aria-live="polite"></div>
+            let toastTimeout;
+
+            const parseUrl = (val) => {
+                const trimmed = val.trim();
+                if (!trimmed) return null;
+                const urlStr = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+                try {
+                    const u = new URL(urlStr);
+                    return u.host ? u : null;
+                } catch {
+                    return null;
+                }
+            };
+
+            const validate = () => {
+                const hasValue = input.value.length > 0;
+                const isValid = parseUrl(input.value) !== null;
+                
+                btn.disabled = !isValid;
+                
+                if (hasValue) {
+                    clearBtn.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
+                    clearBtn.classList.add('opacity-100', 'scale-100', 'pointer-events-auto');
+                } else {
+                    clearBtn.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+                    clearBtn.classList.remove('opacity-100', 'scale-100', 'pointer-events-auto');
+                }
+            };
+
+            const showToast = (message, type = 'success') => {
+                clearTimeout(toastTimeout);
+                toastMsg.textContent = message;
+                
+                if (type === 'error') {
+                    toastIcon.innerHTML = `<svg class="w-[18px] h-[18px] text-[#FF3B30]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+                } else {
+                    toastIcon.innerHTML = `<svg class="w-[18px] h-[18px] text-apple-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                }
+
+                toast.classList.remove('opacity-0', '-translate-y-4', 'scale-95');
+                toast.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+                    toast.classList.add('opacity-0', '-translate-y-4', 'scale-95');
+                }, 3000);
+            };
+
+            const handleProxy = async () => {
+                const target = parseUrl(input.value);
+                if (!target) {
+                    showToast('无效的 URL 格式', 'error');
+                    return;
+                }
+
+                btn.disabled = true;
+                btnText.textContent = '处理中...';
+                btnSpinner.classList.remove('hidden');
+
+                // Artificial micro-delay for smooth UX feeling
+                await new Promise(r => setTimeout(r, 200));
+
+                try {
+                    const proxyUrl = `${location.origin}/${target.protocol.slice(0, -1)}/${target.host}${target.pathname}${target.search}${target.hash}`;
+                    window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+                    showToast('已生成代理链接');
+                } catch (err) {
+                    showToast('执行失败', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btnText.textContent = '立即代理';
+                    btnSpinner.classList.add('hidden');
+                }
+            };
+
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                validate();
+                input.focus();
+            });
+
+            input.addEventListener('input', validate);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !btn.disabled) {
+                    e.preventDefault();
+                    input.blur();
+                    handleProxy();
+                }
+            });
+            btn.addEventListener('click', handleProxy);
+
+            // Initial check to set correct UI states
+            validate();
+        });
+    </script>
 </body>
-
-<script>
-    const URL_PATTERN = /^(https?:\/\/)?([\w-]+\.)+\w{2,}(\/.*)?$/i;
-    const DEBOUNCE_DELAY = 300;
-
-    class ProxyService {
-        constructor() {
-            this.input = document.getElementById('input');
-            this.submitBtn = document.getElementById('submitBtn');
-            this.status = document.getElementById('status');
-            
-            this.initEventListeners();
-        }
-
-        initEventListeners() {
-            this.input.addEventListener('input', this.debounce(this.validateInput, DEBOUNCE_DELAY));
-            this.input.addEventListener('keypress', e => e.key === 'Enter' && this.handleSubmit());
-            this.submitBtn.addEventListener('click', () => this.handleSubmit());
-        }
-
-        debounce(fn, delay) {
-            let timeout;
-            return (...args) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => fn.apply(this, args), delay);
-            }
-        }
-
-        validateInput() {
-            const isValid = URL_PATTERN.test(this.input.value);
-            this.submitBtn.disabled = !isValid;
-            this.input.setAttribute('aria-invalid', !isValid);
-        }
-
-        showStatus(message, type = 'success') {
-            this.status.textContent = message;
-            this.status.style.background = `var(--${type})`;
-            this.status.classList.add('status-visible');
-            setTimeout(() => {
-                this.status.classList.remove('status-visible');
-            }, 3000);
-        }
-
-        async handleSubmit() {
-            const url = this.input.value.trim();
-            
-            if (!URL_PATTERN.test(url)) {
-                this.showStatus('请输入有效的URL地址', 'error');
-                return;
-            }
-
-            try {
-                this.submitBtn.disabled = true;
-                this.submitBtn.textContent = '处理中...';
-                
-                const targetUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
-                const proxyUrl = `${location.origin}/${targetUrl.protocol.slice(0, -1)}/${targetUrl.hostname}${targetUrl.pathname}`;
-                
-                window.open(proxyUrl, '_blank');
-                this.showStatus('代理请求已发送');
-            } catch (error) {
-                this.showStatus('处理URL时发生错误', 'error');
-                console.error('Proxy Error:', error);
-            } finally {
-                this.submitBtn.disabled = false;
-                this.submitBtn.textContent = '立即代理 →';
-            }
-        }
-    }
-
-    // 初始化应用
-    document.addEventListener('DOMContentLoaded', () => {
-        new ProxyService();
-    });
-</script>
-
 </html>
+
