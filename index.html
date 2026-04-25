@@ -195,11 +195,12 @@
 
                 try {
                     const proxyUrl = `${location.origin}/${target.protocol.slice(0, -1)}/${target.host}${target.pathname}${target.search}${target.hash}`;
-                    const popup = window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+                    const popup = window.open(proxyUrl, '_blank');
                     if (!popup) {
                         showToast('浏览器拦截了新窗口', 'error');
                         return;
                     }
+                    popup.opener = null;
                     showToast('已在新窗口打开');
                 } catch (err) {
                     showToast('执行失败', 'error');
