@@ -182,7 +182,7 @@
                 }, 3000);
             };
 
-            const handleProxy = async () => {
+            const handleProxy = () => {
                 const target = parseUrl(input.value);
                 if (!target) {
                     showToast('无效的 URL 格式', 'error');
@@ -193,13 +193,14 @@
                 btnText.textContent = '处理中...';
                 btnSpinner.classList.remove('hidden');
 
-                // Artificial micro-delay for smooth UX feeling
-                await new Promise(r => setTimeout(r, 200));
-
                 try {
                     const proxyUrl = `${location.origin}/${target.protocol.slice(0, -1)}/${target.host}${target.pathname}${target.search}${target.hash}`;
-                    window.open(proxyUrl, '_blank', 'noopener,noreferrer');
-                    showToast('已生成代理链接');
+                    const popup = window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+                    if (!popup) {
+                        showToast('浏览器拦截了新窗口', 'error');
+                        return;
+                    }
+                    showToast('已在新窗口打开');
                 } catch (err) {
                     showToast('执行失败', 'error');
                 } finally {
